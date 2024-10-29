@@ -1,6 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.ProBuilder;
+using TMPro;
 
 // Sam Robichaud 2022
 // NSCC-Truro
@@ -8,9 +12,29 @@ using UnityEngine;
 
 public class FirstPersonController_Sam : MonoBehaviour
 {
-    //Detecting Triggers
+    float playTime = 15f;
+    bool playing = false;
+    int pointsScored;
+    
+    public TargetManager targetManager;
+
+    public TextMeshProUGUI instructionText;
+    
+    //string to be evaluated for hitScan
+    public string raycastHitName;
+    
+    //point from which the projectile will come from
+    public Transform gunPoint;
+
+    //projectile gameObject and it's speed
+    public GameObject projectilePrefab;
+    public float projectileSpeed = 20f;
+    GameObject projectile;
+
+    //Triggers
     GameObject teleportTrigger;
     GameObject stairTriggerOne;
+    //Things to be triggered
     GameObject house;
     GameObject secondStairs;
     
@@ -126,10 +150,25 @@ public class FirstPersonController_Sam : MonoBehaviour
         secondStairs = GameObject.Find("SecondStairs");
         secondStairs.SetActive(false);
         house.SetActive(false);
+
+        instructionText.gameObject.SetActive(false);
     }
 
     private void Update()
     {
+        if (playing && playTime > 0)
+        {
+            playTime -= Time.deltaTime;
+        }
+        else if (playTime <= 0 && playing == true)
+        {
+            Debug.Log($"Youve Finished Playing The Game\nScore: {pointsScored}");
+            targetManager.CancelInvoke();
+            playing = false; 
+
+            
+        }
+        
         if (canMove)
         {
             HandleMovementInput();
@@ -140,6 +179,26 @@ public class FirstPersonController_Sam : MonoBehaviour
 
             ApplyFinalMovement();
         }
+        if(Input.GetMouseButtonDown(0))
+        {
+            Shoot();
+        }
+        if(instructionText != null && instructionText.isActiveAndEnabled == true)
+        {
+            Time.timeScale = 0f;
+
+            if(Input.GetKeyDown(KeyCode.Space))
+            { 
+                Destroy(instructionText);
+                Destroy(GameObject.Find("TargetPracticeTrigger"));
+                targetManager.StartTargetPractice(targetManager.targetInterval);
+                Time.timeScale = 1f;
+                playing = true;
+            }
+        }
+                
+        
+                                                                    
     }
 
     private void LateUpdate()
@@ -288,21 +347,84 @@ public class FirstPersonController_Sam : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject == teleportTrigger)
-        {
-            Debug.Log("TRIGGER WORKED");
+        {        
             house.SetActive(true);
             secondStairs.SetActive(false);
         }
         if (other.gameObject == stairTriggerOne)
-        {
-            Debug.Log("TRIGGER WORKED");
+        {          
             secondStairs.SetActive(true);
             secondStairs.transform.SetParent(house.transform);
         }
+        if(other.gameObject.CompareTag("TargetPracticeTrigger"))
+        {
+            instructionText.gameObject.SetActive(true);
+        }
+    }
+
+    void Shoot()
+    {                
+        //referencing the camera with the MainCamera tag
+        Camera cam = Camera.main;
+        Vector3 cameraPosition = cam.transform.position;
+        
+
+        //our ray will turn the mouse position into world space
+        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        //will be where we are aiming
+        Vector3 targetPoint;
+
+        //if the ray is hitting something in the world it will detect what it is
+        if (Physics.Raycast(ray, out RaycastHit hit))
+        {
+            targetPoint = hit.point;
+            //Debug.Log(hit.point);
+        }
+        else
+        {
+            targetPoint = ray.GetPoint(1000);
+        }
+        Vector3 direction = (targetPoint - gunPoint.position).normalized;
+        projectile = Instantiate(projectilePrefab, gunPoint.position, Quaternion.identity);
+
+        Rigidbody rb = projectile.GetComponent<Rigidbody>();
+        rb.velocity = direction * projectileSpeed;
+
+        try
+        {
+            raycastHitName = hit.collider.gameObject.name;
+        }
+        catch(NullReferenceException)
+        {
+            Debug.Log("NO OBJECT DETECTED");
+        }
+
+        //HitScanning the targets on the wall
+        if (targetManager.currentTarget != null && raycastHitName == targetManager.currentTarget.name)
+        {
+            //handles the speeding up of targets
+            targetManager.CancelInvoke();
+            
+            if(targetManager.targetInterval > 1.1)
+            {
+                targetManager.targetInterval -= .1f;
+            }            
+            
+            targetManager.StartTargetPractice(targetManager.targetInterval);
+            pointsScored++;
+
+
+            Debug.Log($"Interval: {targetManager.targetInterval}");
+        }
+        else
+        {
+            Debug.Log("No target hit");
+        }
+        
+
+
     }
 
 
-
-
-
+   
 }
