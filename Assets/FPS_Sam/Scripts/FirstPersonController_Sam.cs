@@ -12,13 +12,18 @@ using TMPro;
 
 public class FirstPersonController_Sam : MonoBehaviour
 {
+    public GameObject player;
+    public Transform respawnLocation;
+    
     float playTime = 15f;
     bool playing = false;
     int pointsScored;
     
     public TargetManager targetManager;
 
+    public TextMeshProUGUI learnToShoot;
     public TextMeshProUGUI instructionText;
+    public TextMeshProUGUI doneGameText;
     
     //string to be evaluated for hitScan
     public string raycastHitName;
@@ -152,23 +157,44 @@ public class FirstPersonController_Sam : MonoBehaviour
         house.SetActive(false);
 
         instructionText.gameObject.SetActive(false);
+        doneGameText.gameObject.SetActive(false);
+        learnToShoot.gameObject.SetActive(true);       
     }
 
+    private void Start()
+    {
+        Debug.Log($"Position: {transform.position}\n Rotation: {transform.rotation}");        
+    }
     private void Update()
     {
+        if(Input.GetKeyDown(KeyCode.Mouse0))
+        {
+            Destroy(learnToShoot);
+        }
+        
         if (playing && playTime > 0)
         {
             playTime -= Time.deltaTime;
         }
         else if (playTime <= 0 && playing == true)
         {
-            Debug.Log($"Youve Finished Playing The Game\nScore: {pointsScored}");
+            doneGameText.SetText($"Score: {pointsScored}\nPress 'Space' to continue.");
+            
+            doneGameText.gameObject.SetActive(true);                                    
+                                    
             targetManager.CancelInvoke();
-            playing = false; 
-
+            targetManager.ResetTargetColor(targetManager.currentTarget);
+            playing = false;  
             
         }
-        
+        if (doneGameText.isActiveAndEnabled == true)
+        {            
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                doneGameText.gameObject.SetActive(false);
+            }
+        }
+
         if (canMove)
         {
             HandleMovementInput();
@@ -360,8 +386,19 @@ public class FirstPersonController_Sam : MonoBehaviour
         {
             instructionText.gameObject.SetActive(true);
         }
+        
+        //NOT WORKING FOR NO REASONS
+        if(other.gameObject.CompareTag("PlayerCatcher"))
+        {
+            Debug.Log("ISNIDE");
+            player.transform.position = respawnLocation.position;
+        }
     }
-
+    //void Respawn()
+    //{
+    //    Debug.Log("ASDASDASDAS");
+    //    transform.position = new Vector3(0, 3, -6);                    
+    //}
     void Shoot()
     {                
         //referencing the camera with the MainCamera tag
@@ -400,7 +437,7 @@ public class FirstPersonController_Sam : MonoBehaviour
         }
 
         //HitScanning the targets on the wall
-        if (targetManager.currentTarget != null && raycastHitName == targetManager.currentTarget.name)
+        if (targetManager.currentTarget != null && raycastHitName == targetManager.currentTarget.name && playing)
         {
             //handles the speeding up of targets
             targetManager.CancelInvoke();
