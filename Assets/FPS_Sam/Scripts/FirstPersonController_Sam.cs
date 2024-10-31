@@ -11,7 +11,9 @@ using TMPro;
 // Based on tutorial by (Comp - 3 Interactive)  * with modifications *
 
 public class FirstPersonController_Sam : MonoBehaviour
-{       
+{
+    public Transform respawnLocation;
+    
     float playTime = 15f;
     bool playing = false;
     int pointsScored;
@@ -383,7 +385,11 @@ public class FirstPersonController_Sam : MonoBehaviour
         {
             instructionText.gameObject.SetActive(true);
         }
-                
+        if (other.gameObject.CompareTag("PlayerCatcher"))
+        {
+            transform.position = respawnLocation.position;
+        }
+
     }
     //void Respawn()
     //{
